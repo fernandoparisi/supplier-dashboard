@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supplier Performance Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e17;
+  --bg2: #131a29;
+  --bg3: #1b2436;
+  --border: #2a344a;
+  --text: #e8eaf0;
+  --text2: #8b93a8;
+  --text3: #4a5168;
+  --green: #2dd4a0;
+  --green-dim: rgba(45,212,160,0.12);
+  --amber: #f5a623;
+  --amber-dim: rgba(245,166,35,0.12);
+  --red: #f05a5a;
+  --red-dim: rgba(240,90,90,0.12);
+  --blue: #3d6dfb;
+  --blue-dim: rgba(61,109,251,0.12);
+  --accent: #3d6dfb;
+  --brand-navy: #0a0e17;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; min-height: 100vh; scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; background-image: radial-gradient(ellipse 900px 500px at 85% -10%, rgba(61,109,251,0.10), transparent 60%); background-attachment: fixed; }
+.tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.chat-messages { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+/* Layout */
+.shell { max-width: 1280px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+/* Brand bar */
+.brandbar { position: relative; display: flex; align-items: center; justify-content: space-between; padding-bottom: 1.1rem; margin-bottom: 1.1rem; overflow: hidden; }
+.wordmark { display: flex; align-items: baseline; gap: 2px; font-family: 'IBM Plex Sans', sans-serif; font-weight: 700; font-size: 19px; letter-spacing: -.2px; position: relative; z-index: 1; }
+.wordmark .ops { color: var(--text); }
+.wordmark .nova { color: var(--blue); }
+.wordmark .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--blue); margin-left: 5px; align-self: center; }
+.brand-tagline { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: .14em; color: var(--text3); text-transform: uppercase; margin-top: 3px; }
+
+/* Header */
+.header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+.header-title { font-size: 22px; font-weight: 700; letter-spacing: -.3px; color: var(--text); }
+.header-sub { font-size: 13px; color: var(--text2); margin-top: 4px; font-family: 'IBM Plex Mono', monospace; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.source-tag { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text3); background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 4px 10px; }
+
+/* Year selector */
+.year-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 1.75rem; }
+.year-label { font-size: 12px; color: var(--text2); font-family: 'IBM Plex Mono', monospace; margin-right: 4px; }
+.yr-btn { font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 5px 14px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg2); color: var(--text2); cursor: pointer; transition: all .15s; }
+.yr-btn:hover { border-color: var(--accent); color: var(--accent); }
+.yr-btn.active { background: var(--accent); color: #0f1117; border-color: var(--accent); font-weight: 500; }
+.yr-btn.all-btn { border-color: var(--blue); color: var(--blue); }
+.yr-btn.all-btn.active { background: var(--blue); color: #fff; }
+
+/* KPI row */
+.kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+.kpi { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.1rem; position: relative; overflow: hidden; }
+.kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+.kpi.green::before { background: var(--green); }
+.kpi.amber::before { background: var(--amber); }
+.kpi.red::before { background: var(--red); }
+.kpi.blue::before { background: var(--blue); }
+.kpi.purple::before { background: #a78bfa; }
+.kpi-label { font-size: 11px; color: var(--text2); font-family: 'IBM Plex Mono', monospace; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .06em; }
+.kpi-val { font-size: 24px; font-weight: 700; line-height: 1; }
+.kpi-val.green { color: var(--green); }
+.kpi-val.amber { color: var(--amber); }
+.kpi-val.red { color: var(--red); }
+.kpi-val.blue { color: var(--blue); }
+.kpi-val.purple { color: #a78bfa; }
+.kpi-sub { font-size: 11px; color: var(--text3); margin-top: 5px; font-family: 'IBM Plex Mono', monospace; }
+
+/* Grid */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.span2 { grid-column: span 2; }
+
+/* Cards */
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1.1rem 1.25rem; }
+.card-title { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .07em; font-family: 'IBM Plex Mono', monospace; margin-bottom: 1rem; display: flex; align-items: center; gap: 6px; }
+.card-title .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-green { background: var(--green); }
+.dot-amber { background: var(--amber); }
+.dot-red { background: var(--red); }
+.dot-blue { background: var(--blue); }
+
+/* Bar chart rows */
+.bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.bar-name { font-size: 12px; color: var(--text); width: 86px; flex-shrink: 0; font-family: 'IBM Plex Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-track { flex: 1; height: 7px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+.bar-num { font-size: 11px; color: var(--text2); width: 52px; text-align: right; font-family: 'IBM Plex Mono', monospace; flex-shrink: 0; }
+
+/* Table */
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { padding: 7px 10px; color: var(--text3); font-family: 'IBM Plex Mono', monospace; font-weight: 500; text-align: left; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg3); }
+
+/* Pill */
+.pill { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 3px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; letter-spacing: .04em; }
+.pill-g { background: var(--green-dim); color: var(--green); }
+.pill-a { background: var(--amber-dim); color: var(--amber); }
+.pill-r { background: var(--red-dim); color: var(--red); }
+
+/* OTD gauge mini */
+.otd-num { font-size: 32px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+.trend-arrow { font-size: 14px; margin-left: 4px; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .grid2, .grid3 { grid-template-columns: 1fr; }
+  .rec-grid { grid-template-columns: 1fr; }
+  .shell { padding: 1rem; }
+  .header { flex-direction: column; gap: 8px; }
+  .header-title { font-size: 18px; }
+  .year-bar { flex-wrap: wrap; gap: 6px; }
+  .yr-btn { font-size: 11px; padding: 4px 10px; }
+  .kpi-val { font-size: 20px; }
+  .bar-name { width: 72px; font-size: 11px; }
+  .api-row { flex-wrap: wrap; }
+  .api-input { min-width: 100%; }
+  .chat-input-row { flex-direction: column; }
+  .send-btn { width: 100%; padding: 10px; }
+  table { font-size: 11px; }
+  th, td { padding: 6px 6px; }
+  .tbl-wrap { font-size: 11px; }
+}
+/* Footer */
+.brand-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 1.25rem; margin-top: .5rem; border-top: 1px solid var(--border); }
+.brand-footer-left { display: flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--text3); }
+.brand-footer-left b { color: var(--text2); font-weight: 600; }
+.brand-footer-left .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--blue); }
+.brand-footer a { color: var(--text2); text-decoration: none; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; border: 1px solid var(--border); padding: 4px 10px; border-radius: 4px; transition: all .15s; }
+.brand-footer a:hover { border-color: var(--blue); color: var(--blue); }
+
+@media (max-width: 480px) {
+  .kpi-row { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .kpi { padding: .75rem .85rem; }
+  .kpi-val { font-size: 18px; }
+  .kpi-label { font-size: 10px; }
+  .kpi-sub { font-size: 10px; }
+  .card { padding: .85rem .9rem; }
+  .card-title { font-size: 10px; margin-bottom: .75rem; }
+  .yr-btn { font-size: 10px; padding: 4px 8px; }
+  .year-label { display: none; }
+  .header-title { font-size: 16px; }
+  .header-sub { font-size: 11px; }
+  .rec-text { font-size: 11px; }
+  .rec-tag { font-size: 9px; }
+  .msg { font-size: 12px; max-width: 95%; }
+  .sug-btn { font-size: 10px; padding: 4px 8px; }
+  .chat-messages { height: 260px; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Brand bar -->
+  <div class="brandbar">
+    <div>
+      <div class="wordmark"><span class="ops">Ops</span><span class="nova">Nova</span><span class="dot"></span></div>
+      <div class="brand-tagline">Inteligencia operacional para industria</div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <div class="header-title">Supplier Performance Dashboard</div>
+      <div class="header-sub">Demo data &nbsp;·&nbsp; 14 suppliers &nbsp;·&nbsp; 2018–2025</div>
+    </div>
+  </div>
+
+  <!-- Year selector -->
+  <div class="year-bar">
+    <span class="year-label">AÑO:</span>
+    <button class="yr-btn all-btn active" onclick="setYear('all')">TODOS</button>
+    <button class="yr-btn" onclick="setYear(2018)">2018</button>
+    <button class="yr-btn" onclick="setYear(2019)">2019</button>
+    <button class="yr-btn" onclick="setYear(2020)">2020</button>
+    <button class="yr-btn" onclick="setYear(2021)">2021</button>
+    <button class="yr-btn" onclick="setYear(2022)">2022</button>
+    <button class="yr-btn" onclick="setYear(2023)">2023</button>
+    <button class="yr-btn" onclick="setYear(2024)">2024</button>
+    <button class="yr-btn" onclick="setYear(2025)">2025</button>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi blue">
+      <div class="kpi-label">Total Proveedores</div>
+      <div class="kpi-val blue" id="kpi-prov">14</div>
+      <div class="kpi-sub">activos</div>
+    </div>
+    <div class="kpi amber">
+      <div class="kpi-label">Lead Time Promedio</div>
+      <div class="kpi-val amber" id="kpi-lt">—</div>
+      <div class="kpi-sub">días (emisión → recepción)</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-label">Unidades Recibidas</div>
+      <div class="kpi-val green" id="kpi-units">—</div>
+      <div class="kpi-sub" id="kpi-units-sub">período seleccionado</div>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-label">Pendiente Entrega</div>
+      <div class="kpi-val red" id="kpi-pend">USD 1.39M</div>
+      <div class="kpi-sub">valor en tránsito</div>
+    </div>
+    <div class="kpi purple">
+      <div class="kpi-label">OTD (≤180d)</div>
+      <div class="kpi-val purple" id="kpi-otd">—</div>
+      <div class="kpi-sub">on-time delivery</div>
+    </div>
+  </div>
+
+  <!-- Row 1: Monthly units + LT by year -->
+  <div class="grid2" style="margin-bottom:12px">
+    <div class="card">
+      <div class="card-title"><span class="dot dot-blue"></span>Unidades recibidas por mes</div>
+      <div style="position:relative;height:200px"><canvas id="chartMes"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot dot-amber"></span>Evolución lead time anual (días)</div>
+      <div style="position:relative;height:200px"><canvas id="chartLtAnio"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Row 2: Units by year + OTD by year -->
+  <div class="grid2" style="margin-bottom:12px">
+    <div class="card">
+      <div class="card-title"><span class="dot dot-green"></span>Unidades entregadas por año</div>
+      <div style="position:relative;height:200px"><canvas id="chartUnitsAnio"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot dot-red"></span>On-Time Delivery % por año (meta ≤180 días)</div>
+      <div style="position:relative;height:200px"><canvas id="chartOtd"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Row 3: LT by supplier + Pending -->
+  <div class="grid2" style="margin-bottom:12px">
+    <div class="card">
+      <div class="card-title"><span class="dot dot-amber"></span>Lead time por proveedor (días prom.)</div>
+      <div id="lt-bars"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot dot-green"></span>Unidades recibidas por proveedor</div>
+      <div id="units-bars"></div>
+    </div>
+  </div>
+
+  <!-- Tabla proveedores ordenada óptimo → crítico -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-title"><span class="dot dot-blue"></span>Detalle por proveedor — óptimo → crítico</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Proveedor</th>
+            <th style="text-align:right">LT Prom. (días)</th>
+            <th style="text-align:right">Unidades recibidas</th>
+            <th style="text-align:right">Pendiente USD</th>
+            <th style="text-align:right">Pend. Unidades</th>
+            <th>Estado LT</th>
+          </tr>
+        </thead>
+        <tbody id="prov-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+
+</div><!-- /shell -->
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────
+const UNITS_MES = [{"anio":2018,"mes":1,"unidades":1145},{"anio":2018,"mes":2,"unidades":443},{"anio":2018,"mes":3,"unidades":337},{"anio":2018,"mes":4,"unidades":717},{"anio":2018,"mes":5,"unidades":708},{"anio":2018,"mes":6,"unidades":758},{"anio":2018,"mes":7,"unidades":1056},{"anio":2018,"mes":8,"unidades":992},{"anio":2018,"mes":9,"unidades":1346},{"anio":2018,"mes":10,"unidades":339},{"anio":2018,"mes":11,"unidades":685},{"anio":2018,"mes":12,"unidades":619},{"anio":2019,"mes":1,"unidades":1214},{"anio":2019,"mes":2,"unidades":1056},{"anio":2019,"mes":3,"unidades":1755},{"anio":2019,"mes":4,"unidades":1683},{"anio":2019,"mes":5,"unidades":1295},{"anio":2019,"mes":6,"unidades":1217},{"anio":2019,"mes":7,"unidades":3040},{"anio":2019,"mes":8,"unidades":1740},{"anio":2019,"mes":9,"unidades":2872},{"anio":2019,"mes":10,"unidades":2030},{"anio":2019,"mes":11,"unidades":678},{"anio":2019,"mes":12,"unidades":3250},{"anio":2020,"mes":1,"unidades":2523},{"anio":2020,"mes":2,"unidades":2432},{"anio":2020,"mes":3,"unidades":2264},{"anio":2020,"mes":4,"unidades":790},{"anio":2020,"mes":5,"unidades":1480},{"anio":2020,"mes":6,"unidades":893},{"anio":2020,"mes":7,"unidades":15018},{"anio":2020,"mes":8,"unidades":558},{"anio":2020,"mes":9,"unidades":1250},{"anio":2020,"mes":10,"unidades":2559},{"anio":2020,"mes":11,"unidades":1004},{"anio":2020,"mes":12,"unidades":2129},{"anio":2021,"mes":1,"unidades":1616},{"anio":2021,"mes":2,"unidades":1708},{"anio":2021,"mes":3,"unidades":1497},{"anio":2021,"mes":4,"unidades":1193},{"anio":2021,"mes":5,"unidades":677},{"anio":2021,"mes":6,"unidades":725},{"anio":2021,"mes":7,"unidades":449},{"anio":2021,"mes":8,"unidades":1625},{"anio":2021,"mes":9,"unidades":453},{"anio":2021,"mes":10,"unidades":892},{"anio":2021,"mes":11,"unidades":434},{"anio":2021,"mes":12,"unidades":1181},{"anio":2022,"mes":1,"unidades":2903},{"anio":2022,"mes":2,"unidades":1020},{"anio":2022,"mes":3,"unidades":2810},{"anio":2022,"mes":4,"unidades":4175},{"anio":2022,"mes":5,"unidades":1066},{"anio":2022,"mes":6,"unidades":1064},{"anio":2022,"mes":7,"unidades":4216},{"anio":2022,"mes":8,"unidades":2397},{"anio":2022,"mes":9,"unidades":4533},{"anio":2022,"mes":10,"unidades":3056},{"anio":2022,"mes":11,"unidades":33003},{"anio":2022,"mes":12,"unidades":957},{"anio":2023,"mes":1,"unidades":3040},{"anio":2023,"mes":2,"unidades":4773},{"anio":2023,"mes":3,"unidades":1700},{"anio":2023,"mes":4,"unidades":3853},{"anio":2023,"mes":5,"unidades":1845},{"anio":2023,"mes":6,"unidades":2506},{"anio":2023,"mes":7,"unidades":3666},{"anio":2023,"mes":8,"unidades":2103},{"anio":2023,"mes":9,"unidades":2171},{"anio":2023,"mes":10,"unidades":4003},{"anio":2023,"mes":11,"unidades":1146},{"anio":2023,"mes":12,"unidades":2774},{"anio":2024,"mes":1,"unidades":11286},{"anio":2024,"mes":2,"unidades":2578},{"anio":2024,"mes":3,"unidades":3898},{"anio":2024,"mes":4,"unidades":4389},{"anio":2024,"mes":5,"unidades":10693},{"anio":2024,"mes":6,"unidades":10199},{"anio":2024,"mes":7,"unidades":10184},{"anio":2024,"mes":8,"unidades":5374},{"anio":2024,"mes":9,"unidades":3375},{"anio":2024,"mes":10,"unidades":9754},{"anio":2024,"mes":11,"unidades":8525},{"anio":2024,"mes":12,"unidades":7665},{"anio":2025,"mes":1,"unidades":2182},{"anio":2025,"mes":2,"unidades":531},{"anio":2025,"mes":3,"unidades":2599},{"anio":2025,"mes":4,"unidades":1276},{"anio":2025,"mes":5,"unidades":2206},{"anio":2025,"mes":6,"unidades":2910},{"anio":2025,"mes":7,"unidades":854},{"anio":2025,"mes":8,"unidades":806},{"anio":2025,"mes":9,"unidades":784},{"anio":2025,"mes":10,"unidades":1924},{"anio":2025,"mes":11,"unidades":1207},{"anio":2025,"mes":12,"unidades":2061}];
+
+const LT_ANIO = [{"anio":2018,"lead_time":38.4},{"anio":2019,"lead_time":58.7},{"anio":2020,"lead_time":155.2},{"anio":2021,"lead_time":87.9},{"anio":2022,"lead_time":124.6},{"anio":2023,"lead_time":156.8},{"anio":2024,"lead_time":189.4},{"anio":2025,"lead_time":214.5}];
+
+const UNITS_ANIO = [{"anio":2018,"unidades":9145},{"anio":2019,"unidades":21830},{"anio":2020,"unidades":32900},{"anio":2021,"unidades":12450},{"anio":2022,"unidades":61200},{"anio":2023,"unidades":33580},{"anio":2024,"unidades":87920},{"anio":2025,"unidades":19340}];
+
+const OTD_ANIO = [{"anio":2018,"otd":96.2},{"anio":2019,"otd":91.5},{"anio":2020,"otd":51.8},{"anio":2021,"otd":74.6},{"anio":2022,"otd":61.2},{"anio":2023,"otd":52.9},{"anio":2024,"otd":31.4},{"anio":2025,"otd":43.7}];
+
+const LT_PA = [{"anio":2018,"Nombre":"Supplier 1","lead_time":46.4},{"anio":2018,"Nombre":"Supplier 7","lead_time":39.0},{"anio":2018,"Nombre":"Supplier 9","lead_time":72.4},{"anio":2018,"Nombre":"Supplier 4","lead_time":123.1},{"anio":2018,"Nombre":"Supplier 10","lead_time":59.1},{"anio":2018,"Nombre":"Supplier 8","lead_time":335.4},{"anio":2019,"Nombre":"Supplier 1","lead_time":43.9},{"anio":2019,"Nombre":"Supplier 11","lead_time":44.6},{"anio":2019,"Nombre":"Supplier 9","lead_time":73.3},{"anio":2019,"Nombre":"Supplier 6","lead_time":119.4},{"anio":2019,"Nombre":"Supplier 4","lead_time":87.7},{"anio":2019,"Nombre":"Supplier 7","lead_time":49.1},{"anio":2019,"Nombre":"Supplier 8","lead_time":315.3},{"anio":2019,"Nombre":"Supplier 12","lead_time":172.2},{"anio":2020,"Nombre":"Supplier 1","lead_time":54.5},{"anio":2020,"Nombre":"Supplier 11","lead_time":49.9},{"anio":2020,"Nombre":"Supplier 13","lead_time":183.3},{"anio":2020,"Nombre":"Supplier 6","lead_time":209.0},{"anio":2020,"Nombre":"Supplier 7","lead_time":47.5},{"anio":2020,"Nombre":"Supplier 8","lead_time":305.7},{"anio":2020,"Nombre":"Supplier 12","lead_time":236.6},{"anio":2021,"Nombre":"Supplier 1","lead_time":31.6},{"anio":2021,"Nombre":"Supplier 11","lead_time":58.7},{"anio":2021,"Nombre":"Supplier 14","lead_time":150.3},{"anio":2021,"Nombre":"Supplier 2","lead_time":272.1},{"anio":2021,"Nombre":"Supplier 4","lead_time":97.4},{"anio":2021,"Nombre":"Supplier 6","lead_time":135.7},{"anio":2021,"Nombre":"Supplier 7","lead_time":56.7},{"anio":2021,"Nombre":"Supplier 8","lead_time":323.2},{"anio":2021,"Nombre":"Supplier 12","lead_time":225.8},{"anio":2022,"Nombre":"Supplier 1","lead_time":49.1},{"anio":2022,"Nombre":"Supplier 11","lead_time":54.2},{"anio":2022,"Nombre":"Supplier 13","lead_time":169.0},{"anio":2022,"Nombre":"Supplier 14","lead_time":175.8},{"anio":2022,"Nombre":"Supplier 6","lead_time":176.1},{"anio":2022,"Nombre":"Supplier 7","lead_time":54.4},{"anio":2022,"Nombre":"Supplier 8","lead_time":300.7},{"anio":2022,"Nombre":"Supplier 9","lead_time":66.6},{"anio":2022,"Nombre":"Supplier 12","lead_time":257.1},{"anio":2023,"Nombre":"Supplier 1","lead_time":49.3},{"anio":2023,"Nombre":"Supplier 10","lead_time":54.5},{"anio":2023,"Nombre":"Supplier 11","lead_time":36.0},{"anio":2023,"Nombre":"Supplier 13","lead_time":158.0},{"anio":2023,"Nombre":"Supplier 14","lead_time":175.6},{"anio":2023,"Nombre":"Supplier 2","lead_time":230.7},{"anio":2023,"Nombre":"Supplier 3","lead_time":170.2},{"anio":2023,"Nombre":"Supplier 4","lead_time":119.4},{"anio":2023,"Nombre":"Supplier 6","lead_time":181.2},{"anio":2023,"Nombre":"Supplier 7","lead_time":32.7},{"anio":2023,"Nombre":"Supplier 8","lead_time":272.1},{"anio":2024,"Nombre":"Supplier 11","lead_time":49.8},{"anio":2024,"Nombre":"Supplier 13","lead_time":210.6},{"anio":2024,"Nombre":"Supplier 14","lead_time":203.1},{"anio":2024,"Nombre":"Supplier 2","lead_time":254.1},{"anio":2024,"Nombre":"Supplier 3","lead_time":178.6},{"anio":2024,"Nombre":"Supplier 4","lead_time":149.6},{"anio":2024,"Nombre":"Supplier 5","lead_time":287.9},{"anio":2024,"Nombre":"Supplier 6","lead_time":127.8},{"anio":2024,"Nombre":"Supplier 7","lead_time":44.6},{"anio":2024,"Nombre":"Supplier 8","lead_time":312.4},{"anio":2025,"Nombre":"Supplier 14","lead_time":792.3},{"anio":2025,"Nombre":"Supplier 2","lead_time":186.3},{"anio":2025,"Nombre":"Supplier 3","lead_time":172.9},{"anio":2025,"Nombre":"Supplier 4","lead_time":85.3},{"anio":2025,"Nombre":"Supplier 5","lead_time":363.2},{"anio":2025,"Nombre":"Supplier 6","lead_time":124.9},{"anio":2025,"Nombre":"Supplier 7","lead_time":35.8},{"anio":2025,"Nombre":"Supplier 8","lead_time":338.3}];
+
+const UNITS_PA = [{"anio":2018,"Nombre":"Supplier 1","Unidades":99},{"anio":2018,"Nombre":"Supplier 7","Unidades":463},{"anio":2018,"Nombre":"Supplier 9","Unidades":2857},{"anio":2018,"Nombre":"Supplier 4","Unidades":121},{"anio":2018,"Nombre":"Supplier 10","Unidades":1627},{"anio":2018,"Nombre":"Supplier 8","Unidades":18375},{"anio":2019,"Nombre":"Supplier 1","Unidades":2163},{"anio":2019,"Nombre":"Supplier 11","Unidades":2784},{"anio":2019,"Nombre":"Supplier 9","Unidades":1101},{"anio":2019,"Nombre":"Supplier 6","Unidades":2447},{"anio":2019,"Nombre":"Supplier 4","Unidades":327},{"anio":2019,"Nombre":"Supplier 7","Unidades":20693},{"anio":2019,"Nombre":"Supplier 8","Unidades":416},{"anio":2019,"Nombre":"Supplier 12","Unidades":7618},{"anio":2020,"Nombre":"Supplier 1","Unidades":5858},{"anio":2020,"Nombre":"Supplier 11","Unidades":1365},{"anio":2020,"Nombre":"Supplier 13","Unidades":665},{"anio":2020,"Nombre":"Supplier 6","Unidades":91},{"anio":2020,"Nombre":"Supplier 7","Unidades":1444},{"anio":2020,"Nombre":"Supplier 8","Unidades":6507},{"anio":2020,"Nombre":"Supplier 12","Unidades":16971},{"anio":2021,"Nombre":"Supplier 1","Unidades":6117},{"anio":2021,"Nombre":"Supplier 11","Unidades":539},{"anio":2021,"Nombre":"Supplier 14","Unidades":23701},{"anio":2021,"Nombre":"Supplier 2","Unidades":2197},{"anio":2021,"Nombre":"Supplier 4","Unidades":122},{"anio":2021,"Nombre":"Supplier 6","Unidades":691},{"anio":2021,"Nombre":"Supplier 7","Unidades":8165},{"anio":2021,"Nombre":"Supplier 8","Unidades":22666},{"anio":2021,"Nombre":"Supplier 12","Unidades":862},{"anio":2022,"Nombre":"Supplier 1","Unidades":13871},{"anio":2022,"Nombre":"Supplier 11","Unidades":2875},{"anio":2022,"Nombre":"Supplier 13","Unidades":3191},{"anio":2022,"Nombre":"Supplier 14","Unidades":309},{"anio":2022,"Nombre":"Supplier 6","Unidades":506},{"anio":2022,"Nombre":"Supplier 7","Unidades":1362},{"anio":2022,"Nombre":"Supplier 8","Unidades":1914},{"anio":2022,"Nombre":"Supplier 9","Unidades":3108},{"anio":2022,"Nombre":"Supplier 12","Unidades":21340},{"anio":2023,"Nombre":"Supplier 1","Unidades":2464},{"anio":2023,"Nombre":"Supplier 10","Unidades":1402},{"anio":2023,"Nombre":"Supplier 11","Unidades":18530},{"anio":2023,"Nombre":"Supplier 13","Unidades":1611},{"anio":2023,"Nombre":"Supplier 14","Unidades":2867},{"anio":2023,"Nombre":"Supplier 2","Unidades":6155},{"anio":2023,"Nombre":"Supplier 3","Unidades":1209},{"anio":2023,"Nombre":"Supplier 4","Unidades":7488},{"anio":2023,"Nombre":"Supplier 6","Unidades":1924},{"anio":2023,"Nombre":"Supplier 7","Unidades":2974},{"anio":2023,"Nombre":"Supplier 8","Unidades":2357},{"anio":2024,"Nombre":"Supplier 11","Unidades":3031},{"anio":2024,"Nombre":"Supplier 13","Unidades":89210},{"anio":2024,"Nombre":"Supplier 14","Unidades":428},{"anio":2024,"Nombre":"Supplier 2","Unidades":3030},{"anio":2024,"Nombre":"Supplier 3","Unidades":2794},{"anio":2024,"Nombre":"Supplier 4","Unidades":23791},{"anio":2024,"Nombre":"Supplier 5","Unidades":17710},{"anio":2024,"Nombre":"Supplier 6","Unidades":25476},{"anio":2024,"Nombre":"Supplier 7","Unidades":3622},{"anio":2024,"Nombre":"Supplier 8","Unidades":1455},{"anio":2025,"Nombre":"Supplier 14","Unidades":734},{"anio":2025,"Nombre":"Supplier 2","Unidades":5344},{"anio":2025,"Nombre":"Supplier 3","Unidades":1966},{"anio":2025,"Nombre":"Supplier 4","Unidades":234},{"anio":2025,"Nombre":"Supplier 5","Unidades":245},{"anio":2025,"Nombre":"Supplier 6","Unidades":4690},{"anio":2025,"Nombre":"Supplier 7","Unidades":8984},{"anio":2025,"Nombre":"Supplier 8","Unidades":792}];
+
+const PEND = [{"Nombre":"Supplier 3","valor_pendiente":588420,"cant_pendiente":2890},{"Nombre":"Supplier 12","valor_pendiente":412900,"cant_pendiente":2015},{"Nombre":"Supplier 9","valor_pendiente":96340,"cant_pendiente":1740},{"Nombre":"Supplier 6","valor_pendiente":58700,"cant_pendiente":430},{"Nombre":"Supplier 2","valor_pendiente":12850,"cant_pendiente":190},{"Nombre":"Supplier 10","valor_pendiente":7230,"cant_pendiente":145},{"Nombre":"Supplier 4","valor_pendiente":2180,"cant_pendiente":61},{"Nombre":"Supplier 13","valor_pendiente":640,"cant_pendiente":22}];
+
+// Provider table sorted óptimo→crítico (with estimated LT for no-delivery suppliers)
+const PROV_SORTED = [
+  {n:"Supplier 1", lt:41.3, est:false, u:1980, vp:0, cp:0},
+  {n:"Supplier 7", lt:44.6, est:false, u:2210, vp:0, cp:0},
+  {n:"Supplier 11", lt:49.8, est:false, u:2560, vp:0, cp:0},
+  {n:"Supplier 9", lt:63.2, est:false, u:1490, vp:96340, cp:1740},
+  {n:"Supplier 10", lt:68.9, est:false, u:340, vp:7230, cp:145},
+  {n:"Supplier 4", lt:112.7, est:false, u:5210, vp:2180, cp:61},
+  {n:"Supplier 6", lt:139.5, est:false, u:4630, vp:58700, cp:430},
+  {n:"Supplier 14", lt:168.9, est:false, u:13820, vp:0, cp:0},
+  {n:"Supplier 13", lt:178.3, est:false, u:132400, vp:640, cp:22},
+  {n:"Supplier 3", lt:201.4, est:false, u:27650, vp:588420, cp:2890},
+  {n:"Supplier 12", lt:223.8, est:false, u:24870, vp:412900, cp:2015},
+  {n:"Supplier 2", lt:254.1, est:false, u:3510, vp:12850, cp:190},
+  {n:"Supplier 5", lt:287.9, est:false, u:6340, vp:0, cp:0},
+  {n:"Supplier 8", lt:312.4, est:false, u:5120, vp:0, cp:0},
+];
+
+// POs with lowest delivery %
+
+const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const COLORS = { green:'#2dd4a0', amber:'#f5a623', red:'#f05a5a', blue:'#4f8ef7' };
+
+// ── CHART DEFAULTS ─────────────────────────────────────────────────────────
+Chart.defaults.color = '#8b92a8';
+Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+Chart.defaults.font.size = 11;
+
+const gridCfg = { color: 'rgba(42,49,71,0.8)', drawBorder: false };
+const noLegend = { display: false };
+
+// ── CHART INSTANCES ────────────────────────────────────────────────────────
+let chartMes, chartLtAnio, chartUnitsAnio, chartOtd;
+let selectedYear = 'all';
+
+function mkLine(id, labels, datasets, yLabel='') {
+  return new Chart(document.getElementById(id), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: noLegend },
+      scales: {
+        x: { grid: gridCfg, ticks: { maxRotation: 45 } },
+        y: { grid: gridCfg, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function mkBar(id, labels, data, colorFn) {
+  return new Chart(document.getElementById(id), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: data.map(colorFn), borderRadius: 3, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: noLegend },
+      scales: {
+        x: { grid: gridCfg, ticks: { maxRotation: 45 } },
+        y: { grid: gridCfg, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function ltColor(v) { return v < 120 ? COLORS.green : v < 200 ? COLORS.amber : COLORS.red; }
+function otdColor(v) { return v >= 70 ? COLORS.green : v >= 40 ? COLORS.amber : COLORS.red; }
+function unitColor(v, max) { return v > max*0.5 ? COLORS.blue : v > max*0.2 ? '#4f8ef7aa' : '#4f8ef766'; }
+
+function fmt(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(2)+'M';
+  if (n >= 1000) return Math.round(n/1000)+'K';
+  return n.toLocaleString('es-AR');
+}
+
+// ── INIT CHARTS ───────────────────────────────────────────────────────────
+function initCharts() {
+  // LT by year (always full — historical context)
+  const ltYrs = LT_ANIO.map(d=>d.anio.toString());
+  const ltVals = LT_ANIO.map(d=>d.lead_time);
+  chartLtAnio = new Chart(document.getElementById('chartLtAnio'), {
+    type: 'line',
+    data: {
+      labels: ltYrs,
+      datasets: [{
+        data: ltVals,
+        borderColor: COLORS.amber,
+        backgroundColor: 'rgba(245,166,35,0.08)',
+        pointBackgroundColor: ltVals.map(ltColor),
+        pointRadius: 5, tension: 0.35, fill: true
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: noLegend,
+        annotation: {}
+      },
+      scales: {
+        x: { grid: gridCfg },
+        y: { grid: gridCfg, beginAtZero: true }
+      }
+    }
+  });
+
+  // Units by year (always full)
+  const uYrs = UNITS_ANIO.map(d=>d.anio.toString());
+  const uVals = UNITS_ANIO.map(d=>d.unidades);
+  const uMax = Math.max(...uVals);
+  chartUnitsAnio = new Chart(document.getElementById('chartUnitsAnio'), {
+    type: 'bar',
+    data: {
+      labels: uYrs,
+      datasets: [{
+        data: uVals,
+        backgroundColor: uVals.map(v=>unitColor(v,uMax)),
+        borderRadius: 4, borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: noLegend },
+      scales: { x: { grid: gridCfg }, y: { grid: gridCfg, beginAtZero: true } }
+    }
+  });
+
+  // OTD by year
+  const otdYrs = OTD_ANIO.map(d=>d.anio.toString());
+  const otdVals = OTD_ANIO.map(d=>d.otd);
+  chartOtd = new Chart(document.getElementById('chartOtd'), {
+    type: 'bar',
+    data: {
+      labels: otdYrs,
+      datasets: [{
+        data: otdVals,
+        backgroundColor: otdVals.map(otdColor),
+        borderRadius: 4, borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: noLegend },
+      scales: {
+        x: { grid: gridCfg },
+        y: { grid: gridCfg, beginAtZero: true, max: 100,
+          ticks: { callback: v => v+'%' } }
+      }
+    }
+  });
+
+  // Monthly units — init with all years
+  chartMes = new Chart(document.getElementById('chartMes'), {
+    type: 'bar',
+    data: { labels: [], datasets: [{ data: [], backgroundColor: COLORS.blue+'99', borderRadius: 3 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: noLegend },
+      scales: { x: { grid: gridCfg, ticks: { maxRotation: 60 } }, y: { grid: gridCfg, beginAtZero: true } }
+    }
+  });
+
+  updateAll('all');
+}
+
+// ── UPDATE ────────────────────────────────────────────────────────────────
+function updateAll(yr) {
+  selectedYear = yr;
+
+  // Monthly chart
+  let mesData;
+  if (yr === 'all') {
+    // Group by year for all-years view
+    const byYear = {};
+    UNITS_MES.forEach(d => { byYear[d.anio] = (byYear[d.anio]||0) + d.unidades; });
+    mesData = Object.entries(byYear).map(([a,u])=>({label:a,val:u}));
+    chartMes.data.labels = mesData.map(d=>d.label);
+    chartMes.data.datasets[0].data = mesData.map(d=>d.val);
+    const mx = Math.max(...mesData.map(d=>d.val));
+    chartMes.data.datasets[0].backgroundColor = mesData.map(d=>unitColor(d.val,mx));
+  } else {
+    mesData = UNITS_MES.filter(d=>d.anio===yr).map(d=>({label:MESES[d.mes],val:d.unidades}));
+    chartMes.data.labels = mesData.map(d=>d.label);
+    chartMes.data.datasets[0].data = mesData.map(d=>d.val);
+    const mx = Math.max(...mesData.map(d=>d.val));
+    chartMes.data.datasets[0].backgroundColor = mesData.map(d=>unitColor(d.val,mx));
+  }
+  chartMes.update();
+
+  // KPIs
+  let ltVal, unitsVal, otdVal, provSet;
+  if (yr === 'all') {
+    const avgLt = LT_ANIO.reduce((a,d)=>a+d.lead_time,0)/LT_ANIO.length;
+    ltVal = avgLt.toFixed(1);
+    unitsVal = UNITS_ANIO.reduce((a,d)=>a+d.unidades,0);
+    otdVal = (OTD_ANIO.reduce((a,d)=>a+d.otd,0)/OTD_ANIO.length).toFixed(1);
+    provSet = new Set(LT_PA.map(d=>d.Nombre)).size;
+  } else {
+    const ltRow = LT_ANIO.find(d=>d.anio===yr);
+    ltVal = ltRow ? ltRow.lead_time : '—';
+    const uRow = UNITS_ANIO.find(d=>d.anio===yr);
+    unitsVal = uRow ? uRow.unidades : 0;
+    const otdRow = OTD_ANIO.find(d=>d.anio===yr);
+    otdVal = otdRow ? otdRow.otd : '—';
+    provSet = new Set(LT_PA.filter(d=>d.anio===yr).map(d=>d.Nombre)).size;
+  }
+
+  document.getElementById('kpi-lt').textContent = ltVal + ' d';
+  document.getElementById('kpi-lt').className = 'kpi-val ' + (ltVal < 120 ? 'green' : ltVal < 200 ? 'amber' : 'red');
+  document.getElementById('kpi-units').textContent = fmt(unitsVal);
+  document.getElementById('kpi-otd').textContent = otdVal + '%';
+  document.getElementById('kpi-otd').className = 'kpi-val purple';
+  document.getElementById('kpi-prov').textContent = provSet;
+
+  // Supplier bars
+  let ltFiltered = yr === 'all' ? LT_PA : LT_PA.filter(d=>d.anio===yr);
+  // Aggregate if all years
+  if (yr === 'all') {
+    const agg = {};
+    ltFiltered.forEach(d => {
+      if (!agg[d.Nombre]) agg[d.Nombre] = { sum: 0, cnt: 0 };
+      agg[d.Nombre].sum += d.lead_time;
+      agg[d.Nombre].cnt++;
+    });
+    ltFiltered = Object.entries(agg).map(([n,v])=>({Nombre:n, lead_time: +(v.sum/v.cnt).toFixed(1)}));
+  }
+  ltFiltered.sort((a,b)=>a.lead_time-b.lead_time);
+
+  let uFiltered = yr === 'all' ? UNITS_PA : UNITS_PA.filter(d=>d.anio===yr);
+  if (yr === 'all') {
+    const agg = {};
+    uFiltered.forEach(d => { agg[d.Nombre] = (agg[d.Nombre]||0) + d.Unidades; });
+    uFiltered = Object.entries(agg).map(([n,u])=>({Nombre:n, Unidades:u}));
+  }
+  uFiltered.sort((a,b)=>b.Unidades-a.Unidades);
+
+  const ltMax = Math.max(...ltFiltered.map(d=>d.lead_time));
+  document.getElementById('lt-bars').innerHTML = ltFiltered.map(d=>{
+    const pct = Math.round(d.lead_time/ltMax*100);
+    const col = ltColor(d.lead_time);
+    return `<div class="bar-row">
+      <span class="bar-name" title="${d.Nombre}">${d.Nombre}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${col}"></div></div>
+      <span class="bar-num">${d.lead_time}d</span>
+    </div>`;
+  }).join('');
+
+  const uMax2 = Math.max(...uFiltered.map(d=>d.Unidades));
+  document.getElementById('units-bars').innerHTML = uFiltered.map(d=>{
+    const pct = Math.round(d.Unidades/uMax2*100);
+    return `<div class="bar-row">
+      <span class="bar-name" title="${d.Nombre}">${d.Nombre}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${COLORS.blue}"></div></div>
+      <span class="bar-num">${fmt(d.Unidades)}</span>
+    </div>`;
+  }).join('');
+
+  // Provider table — sorted óptimo → crítico using PROV_SORTED base, filtered by year if needed
+  const ltMap = Object.fromEntries(ltFiltered.map(d=>[d.Nombre,d.lead_time]));
+  const uMap  = Object.fromEntries(uFiltered.map(d=>[d.Nombre,d.Unidades]));
+  const pendMap = Object.fromEntries(PEND.map(d=>[d.Nombre,d]));
+
+  // Use year-specific LT if filtered, otherwise use PROV_SORTED order & values
+  let tableData;
+  if (yr === 'all') {
+    tableData = [...PROV_SORTED]; // already sorted óptimo→crítico
+  } else {
+    // Use year-specific LT, sorted ascending
+    tableData = ltFiltered.map(d=>({n:d.Nombre, lt:d.lead_time, est:false,
+      u: uMap[d.Nombre]||0,
+      vp: pendMap[d.Nombre]?.valor_pendiente||0,
+      cp: pendMap[d.Nombre]?.cant_pendiente||0
+    })).sort((a,b)=>a.lt-b.lt);
+  }
+
+  document.getElementById('prov-table').innerHTML = tableData.map((d,i)=>{
+    const lt = yr==='all' ? d.lt : (ltMap[d.n] ?? d.lt);
+    const u  = yr==='all' ? d.u  : (uMap[d.n]||0);
+    const vp = yr==='all' ? d.vp : (pendMap[d.n]?.valor_pendiente||0);
+    const cp = yr==='all' ? d.cp : (pendMap[d.n]?.cant_pendiente||0);
+    const pillCls = lt < 120 ? 'pill-g' : lt < 200 ? 'pill-a' : 'pill-r';
+    const pillTxt = lt < 120 ? 'ÓPTIMO' : lt < 200 ? 'MODERADO' : 'CRÍTICO';
+    const estMark = d.est ? ' <span style="color:var(--text3);font-size:10px">(est.)</span>' : '';
+    return `<tr>
+      <td style="color:var(--text3);font-size:11px">${i+1}</td>
+      <td style="font-weight:600">${d.n}</td>
+      <td style="text-align:right">${lt}d${estMark}</td>
+      <td style="text-align:right">${fmt(u)}</td>
+      <td style="text-align:right">USD ${fmt(vp)}</td>
+      <td style="text-align:right">${fmt(cp)} u.</td>
+      <td><span class="pill ${pillCls}">${pillTxt}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── YEAR BUTTON ───────────────────────────────────────────────────────────
+function setYear(yr) {
+  document.querySelectorAll('.yr-btn').forEach(b=>b.classList.remove('active'));
+  const btns = document.querySelectorAll('.yr-btn');
+  btns.forEach(b => {
+    if (b.textContent === (yr==='all'?'TODOS':yr.toString())) b.classList.add('active');
+  });
+  updateAll(yr);
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => { initCharts(); buildRecommendations(); });
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     RECOMMENDATIONS + AI CHAT
+════════════════════════════════════════════════════════════════════════ -->
+<style>
+/* Recommendations */
+.rec-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.rec-item { background: var(--bg3); border-radius: 6px; padding: .85rem 1rem; display: flex; gap: 10px; align-items: flex-start; border-left: 3px solid transparent; }
+.rec-item.critical { border-color: var(--red); }
+.rec-item.warning  { border-color: var(--amber); }
+.rec-item.positive { border-color: var(--green); }
+.rec-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.rec-text { font-size: 12px; color: var(--text); line-height: 1.5; font-family: 'IBM Plex Mono', monospace; }
+.rec-text strong { color: var(--text); font-weight: 600; }
+.rec-tag { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 3px; margin-bottom: 4px; font-weight: 600; letter-spacing: .04em; }
+.rec-tag.critical { background: var(--red-dim); color: var(--red); }
+.rec-tag.warning  { background: var(--amber-dim); color: var(--amber); }
+.rec-tag.positive { background: var(--green-dim); color: var(--green); }
+
+@media(max-width:900px){ .rec-grid{grid-template-columns:1fr;} }
+</style>
+
+<!-- Recommendations -->
+<div class="card" style="margin-top:12px">
+  <div class="card-title"><span class="dot" style="background:#a78bfa"></span>Recomendaciones automáticas</div>
+  <div class="rec-grid" id="rec-grid"><!-- filled by JS --></div>
+</div>
+
+  <!-- Brand footer -->
+  <div class="brand-footer">
+    <div class="brand-footer-left"><span class="dot"></span>Generado con <b>OpsNova</b> · Inteligencia operacional</div>
+    <a href="https://www.linkedin.com/company/opsnova-ar" target="_blank" rel="noopener">LinkedIn ↗</a>
+  </div>
+
+<div style="height:2rem"></div>
+</div><!-- /shell -->
+
+<script>
+// ── RECOMMENDATIONS ───────────────────────────────────────────────────────
+function buildRecommendations() {
+  const recs = [];
+
+  // LT trend
+  const ltLast = LT_ANIO[LT_ANIO.length-1].lead_time;
+  const ltFirst = LT_ANIO[0].lead_time;
+  const ltPct = Math.round((ltLast - ltFirst) / ltFirst * 100);
+  recs.push({ type:'critical', icon:'📈', tag:'LEAD TIME',
+    text: `El lead time promedio <strong>aumentó ${ltPct}%</strong> desde 2018 (${ltFirst}d) hasta 2025 (${ltLast}d). Tendencia sostenida al alza — requiere revisión contractual urgente con proveedores clave.` });
+
+  // OTD collapse
+  const otdLast = OTD_ANIO.find(d=>d.anio===2024)?.otd;
+  const otdFirst = OTD_ANIO[0].otd;
+  recs.push({ type:'critical', icon:'🚨', tag:'OTD CRÍTICO',
+    text: `On-Time Delivery cayó de <strong>${otdFirst}% (2018)</strong> a <strong>${otdLast}% (2024)</strong>. Solo 1 de cada 3 entregas cumple el plazo de 180 días. Impacto directo en disponibilidad operativa.` });
+
+  // Worst LT suppliers 2024
+  const lt2024 = LT_PA.filter(d=>d.anio===2024).sort((a,b)=>b.lead_time-a.lead_time).slice(0,2);
+  if (lt2024.length) recs.push({ type:'critical', icon:'⚠️', tag:'PROVEEDORES CRÍTICOS',
+    text: `<strong>${lt2024[0].Nombre}</strong> (${lt2024[0].lead_time}d) y <strong>${lt2024[1]?.Nombre}</strong> (${lt2024[1]?.lead_time}d) registran los peores lead times en 2024. Auditar contratos y evaluar proveedores alternativos.` });
+
+  // Pending value risk
+  const topPend = PEND[0];
+  const top2Pend = PEND[1];
+  const totalPend = PEND.reduce((a,d)=>a+d.valor_pendiente,0);
+  const topPct = Math.round((topPend.valor_pendiente+top2Pend.valor_pendiente)/totalPend*100);
+  recs.push({ type:'warning', icon:'💰', tag:'CONCENTRACIÓN',
+    text: `<strong>${topPct}% del stock pendiente</strong> (USD ${((topPend.valor_pendiente+top2Pend.valor_pendiente)/1000).toFixed(0)}K) está concentrado en ${topPend.Nombre} y ${top2Pend.Nombre}. Alta exposición ante demoras de estos proveedores.` });
+
+  // 2025 spike
+  const lt2025_14 = LT_PA.find(d=>d.anio===2025&&d.Nombre==='Supplier 14');
+  if (lt2025_14) recs.push({ type:'critical', icon:'🔴', tag:'ALERTA 2025',
+    text: `<strong>Supplier 14</strong> registra un lead time de <strong>${lt2025_14.lead_time} días en 2025</strong> — el peor valor histórico del portfolio. Riesgo inmediato de desabastecimiento.` });
+
+  // Best performers
+  const lt2024sorted = LT_PA.filter(d=>d.anio===2024).sort((a,b)=>a.lead_time-b.lead_time);
+  if (lt2024sorted.length >= 2) recs.push({ type:'positive', icon:'✅', tag:'MEJOR PERFORMANCE',
+    text: `<strong>${lt2024sorted[0].Nombre}</strong> (${lt2024sorted[0].lead_time}d) y <strong>${lt2024sorted[1].Nombre}</strong> (${lt2024sorted[1].lead_time}d) son los proveedores más confiables en 2024. Considerarlos para ampliar volumen.` });
+
+  document.getElementById('rec-grid').innerHTML = recs.map(r => `
+    <div class="rec-item ${r.type}">
+      <span class="rec-icon">${r.icon}</span>
+      <div class="rec-text">
+        <div><span class="rec-tag ${r.type}">${r.tag}</span></div>
+        ${r.text}
+      </div>
+    </div>`).join('');
+}
+
+window.addEventListener('DOMContentLoaded', () => { initCharts(); buildRecommendations(); });
+</script>
+</body>
+</html>
